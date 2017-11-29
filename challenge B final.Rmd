@@ -1,0 +1,142 @@
+---
+title: "challenge B final"
+author: "Léa Dt"
+date: "29 novembre 2017"
+output: html_document
+---
+
+##Task 1B - Predicting house prices in Ames, Iowa (continued)
+
+```{r housing, echo = FALSE, warning=FALSE}
+library(tidyverse)
+library(np)
+library(randomForest)
+```
+
+###Step 2 
+```{r, echo=FALSE, warning=FALSE}
+library(readr)
+train <- read_csv("C:/Users/geraldine/rprog/train.csv")
+
+train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
+
+train <- train %>% filter(is.na(GarageType) == FALSE, is.na(MasVnrType) == FALSE, is.na(BsmtFinType2) == FALSE, is.na(BsmtExposure) == FALSE, is.na(Electrical) == FALSE)
+
+train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
+
+```
+
+
+## Task 2 B - Overfitting in Machine Learning (continued)
+
+```{r overfitting, echo = FALSE}
+rm(list = ls())
+library(tidyverse)
+library(np)
+library(caret)
+set.seed(1)
+```
+
+```{r overfitting0, echo = FALSE}
+#From step 3 of the challenge A
+Nsim <- 150
+b <- c(0,1)
+x0 <- rep(1, Nsim)
+x1 <- rnorm(n = Nsim)
+
+X <- cbind(x0, x1^3)
+y.true <- X %*% b
+
+eps <- rnorm(n = Nsim)
+y <- X %*% b + eps
+
+df <- tbl_df(y[,1]) %>% rename(y = value) %>% bind_cols(tbl_df(x1)) %>% rename(x = value) %>% bind_cols(tbl_df(y.true[,1])) %>% rename(y.true = value)
+```
+
+```{r overfitting0bis, echo = FALSE}
+#From step 6 of the challenge A
+training.index <- createDataPartition(y = y, times = 1, p = 0.8)
+df <- df %>% mutate(which.data = ifelse(1:n() %in% training.index$Resample1, "training", "test"))
+
+training <- df %>% filter(which.data == "training")
+test <- df %>% filter(which.data == "test")
+```
+### Step 1
+```{r overfitting1, echo = FALSE}
+ll.fit.lowflex <- npreg(y ~ x, data = training, method = "ll", bws = 0.5)
+summary(ll.fit.lowflex)
+```
+### Step 2
+```{r overfitting2, echo=FALSE}
+ll.fit.highflex <- npreg(y ~ x, data = training, method = "ll", bws = 0.01)
+summary(ll.fit.highflex)
+```
+### Step 3
+```{r overfitting3, echo=FALSE}
+df <- df %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = df), y.ll.highflex = predict(object = ll.fit.highflex, newdata = df))
+training <- training %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = training), y.ll.highflex = predict(object = ll.fit.highflex, newdata = training))
+
+ggplot(training) + geom_point(mapping = aes(x = x, y = y)) + 
+  geom_line(mapping = aes(x = x, y = y.true)) + 
+  geom_line(mapping = aes(x = x, y = y.ll.lowflex), color = "red") + 
+  geom_line(mapping = aes(x = x, y = y.ll.highflex), color = "blue")
+```
+
+###Step5
+```{r overfitting5, echo=FALSE}
+df <- df %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = df), y.ll.highflex = predict(object = ll.fit.highflex, newdata = df))
+test <- test %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = test), y.ll.highflex = predict(object = ll.fit.highflex, newdata = test))
+
+ggplot(test) + geom_point(mapping = aes(x = x, y = y)) + 
+  geom_line(mapping = aes(x = x, y = y.true)) + 
+  geom_line(mapping = aes(x = x, y = y.ll.lowflex), color = "red") + 
+  geom_line(mapping = aes(x = x, y = y.ll.highflex), color = "blue")
+```
+
+###Step 6
+```{r overfitting6, echo=FALSE}
+v1 <- seq(0.01, 0.5, by = 0.001)
+```
+
+```{r overfitting7}
+#Step 7
+ll.v1 <- lapply(X = v1, FUN = function(v1) {npreg(y ~ x, data = training, method = "ll", bws = v1)})
+```
+
+###Step 8
+```{r overfitting8, echo=FALSE}
+msetrain <- function(fit.model){
+  predictions <- predict(object = fit.model, newdata = training)
+  training %>% mutate(squared.error = (y - predictions)^2) %>% summarize(mse = mean(squared.error))
+}
+mse.tr.results <- unlist(lapply(X = ll.v1, FUN = msetrain))
+mse.tr.results
+```
+
+###Step 9
+```{r overfitting9, echo=FALSE}
+msetest <- function(fit.model){
+  predictions <- predict(object = fit.model, newdata = test)
+  test %>% mutate(squared.error = (y - predictions)^2) %>% summarize(mse = mean(squared.error))
+}
+mse.ts.results <- unlist(lapply(X = ll.v1, FUN = msetest))
+View(mse.ts.results)
+```
+
+###Step 10
+```{r overfitting10, echo=FALSE}
+mse.final <- tbl_df(data.frame(bandwidth = v1, msetrain = mse.tr.results, msetest = mse.ts.results))
+ggplot(mse.final) + 
+  geom_line(mapping = aes(x = bandwidth, y = msetrain), color = "blue") +
+  geom_line(mapping = aes(x = bandwidth, y = msetest), color = "orange")
+
+```
+
+## Task 3B - Privacy regulation compliance in France
+
+###Step 1
+```{r overfit32, warning=FALSE}
+library(readxl)
+CNIL.1 <- read_excel("C:/Users/geraldine/rprog/OpenCNIL_Organismes_avec_CIL_VD_20171115.xlsx")
+View(CNIL.1) 
+```
