@@ -1,81 +1,81 @@
 ---
-title: "challenge B final"
-author: "Léa Dt"
-date: "29 novembre 2017"
+title: "Challenge B final"
+author: "Clélia Hammou et Léa Dardelet"
+date: "08/12/2017"
 output: html_document
 ---
+https://github.com/Lea14071995/Challenge-B.git
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 ##  Task 1B - Predicting house prices in Ames, Iowa (continued)
 
 ###Step 1
-We have two machine learning technique in order to make prediction on a non parametric model:
+We have two non parametric model estimation in order to do prediction:
 
 **Random forest** :  
-It's a machine learning method that give a probability of each decision of a decisional tree based on the existing data.
+It's a machine learning method that give a probability of each decision of a decisional tree 
+based on the existing data.
 It's easier to implement because it combine regression and classification so we win time on the data preparation. Also this method permit to avoid overfitting (overfitting is "the production of an analysis that corresponds too closely or exactly to a particular set of data, and may therefore fail to fit additional data or predict future observations reliably" so hard to generalize to the data) even if it still permits to have a precise predictions (Random forest do not perform pruning method which permits to prevent overfitting). 
 
-**Kernel estimation**: 
-This method estimates the random variable's probability density. It generalize. It weighted average estimators that use kernel functions as weights. 
-
-It's an instance-based learning, that mean that it's a family of learning algorithms which "compares new problem instances with instances seen in training". The advantage of kernel estimation is that it is able to adapt its model to unseen data rather than using a fixed set of
+**Kernel estimation** :  
+This method estimates the random variable's probability density. It generalize. It weighted
+average estimators that use kernel functions as weights. 
+It's an instance-based learning, that mean that it's a family of learning algorithms which
+"compares new problem instances with instances seen in training". The advantage of kernel
+estimation is that it is able to adapt its model to unseen data rather than using a fixed set of
 parameters. 
 
 We decided to chose the random forest method, because we were more familiar to it. 
 
-###Step 2 
-```{r, echo=TRUE, warning=FALSE}
+```{r, echo = TRUE}
+rm(list = ls())
 library(tidyverse)
 library(np)
-library(randomForest) 
-library(readr)
-train <- read_csv("C:/Users/geraldine/rprog/train.csv")
-
-train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
-plot_Missing <- function(data_in, title = NULL){
-  temp_df <- as.data.frame(ifelse(is.na(data_in), 0, 1))
-  temp_df <- temp_df[,order(colSums(temp_df))]
-  data_temp <- expand.grid(list(x = 1:nrow(temp_df), y = colnames(temp_df)))
-  data_temp$m <- as.vector(as.matrix(temp_df))
-  data_temp <- data.frame(x = unlist(data_temp$x), y = unlist(data_temp$y), m = unlist(data_temp$m))
-  ggplot(data_temp) + geom_tile(aes(x=x, y=y, fill=factor(m))) + scale_fill_manual(values=c("white", "black"), name="Missing\n(0=Yes, 1=No)") + theme_light() + ylab("") + xlab("") + ggtitle(title)
-}
-
-plot_Missing(train[,colSums(is.na(train)) > 0])
-train <- train %>% filter(is.na(GarageType) == FALSE, is.na(MasVnrType) == FALSE, is.na(BsmtFinType2) == FALSE, is.na(BsmtExposure) == FALSE, is.na(Electrical) == FALSE)
-remove.vars <- train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 100) %>% select(feature) %>% unlist
-
-train <- train %>% select(- one_of(remove.vars))
-train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
-
-train <- train %>% filter(is.na(GarageType) == FALSE, is.na(MasVnrType) == FALSE, is.na(BsmtFinType2) == FALSE, is.na(BsmtExposure) == FALSE, is.na(Electrical) == FALSE)
-train %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
- 
-cat_var <- train %>% summarise_all(.funs = funs(is.character(.))) %>% gather(key = "feature", value = "is.chr") %>% filter(is.chr == TRUE) %>% select(feature) %>% unlist
-
-train %>% mutate_at(.vars = cat_var, .funs = as.factor)
-lm_model_1 <- lm(SalePrice ~ ., data= train)
-# i transform them all to factors
-names(train) <- make.names(names(train))
-train.rf <- randomForest(SalePrice ~ ., data=train)
+library(randomForest)
+train <- read.csv("train.csv")
+test <- read.csv("test.csv")
 ```
-Here before implementing the random forest method, we get ride of the missing value. Then we converted our observations in numerics features/factors to be able to do a random forest. 
+
+```{r, echo= TRUE}
+train2 <- select(train, -Id)
+```
+
+```{r missing data, echo= TRUE}
+remove.vars <- train2 %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 100) %>% select(feature) %>% unlist
+
+train2 <- train2 %>% select(- one_of(remove.vars))
+
+train2 %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
+
+train2 <- train2 %>% filter(is.na(GarageType) == FALSE, is.na(MasVnrType) == FALSE, is.na(BsmtFinType2) == FALSE, is.na(BsmtExposure) == FALSE, is.na(Electrical) == FALSE)
+
+train2 %>% summarise_all(.funs = funs(sum(is.na(.)))) %>% gather(key = "feature", value = "missing.observations") %>% filter(missing.observations > 0)
+
+```
+
+```{r catvar, echo = TRUE}
+cat_var <- train2 %>% summarise_all(.funs = funs(is.character(.))) %>% gather(key = "feature", value = "is.chr") %>% filter(is.chr == TRUE) %>% select(feature) %>% unlist
+```
+
+##Step 2
+```{r RF,echo = TRUE, include = TRUE}
+trainRF <- randomForest(SalePrice~., data=train2, ntree=400, mtry=10, na.action = na.roughfix)
+print(trainRF)
+```
+Here before implementing the random forest method, we get ride of the missing value. Then we converted our observations in numerics features/factors to be able to do a random forest. Then we created the random forest by chosing 400 for the number of trees and 10 for the number of variable per level. 
 
 ##Step 3
-```{r, echo=TRUE, warning=FALSE}
-test <- read_csv("C:/Users/geraldine/rprog/test.csv")
-test.rf <- randomForest(SaleCondition ~ ., data=test)
-
-
-
-
-
-````
+Here, we have to make predictions on the test data, and compare them to the predictions of a linear regression of our choice. We choose to compare them to the linear regression that we did in the step 10 of the challenge A. Then we have to make prediction by using the same command that the one used in the step 11 of the challenge A:  
+prediction <- data.frame(Id = test$Id, SalePrice_predict = predict(lm_model_2, test, type="response"))
 
 
 
 ##  Task 2 B - Overfitting in Machine Learning (continued)
 
-```{r overfitting, echo = FALSE}
+```{r overfitting, echo = TRUE}
 rm(list = ls())
 library(tidyverse)
 library(np)
@@ -115,9 +115,7 @@ summary(ll.fit.lowflex)
 
 Before starting, we redefine our true model : y = x^3 + epsilon thanks to what we did before in challenge A. We also set the seed to 1 so that we will all have the same output in R. 
 
-In order to estimate a low-flexibility local linear model on the training data  we choose a local linear method and a bandwidth of 0.5. As requested, we call it: ll.fit.lowflex
-
-
+In order to estimate a low-flexibility local linear model on the training data  we choose a local linear method and a bandwidth of 0.5. As requested, we call it: ll.fit.lowflex.
 
 ### Step 2
 ```{r overfitting2, echo=TRUE}
@@ -125,7 +123,6 @@ ll.fit.highflex <- npreg(y ~ x, data = training, method = "ll", bws = 0.01)
 summary(ll.fit.highflex)
 ```
 We did the same with a bandwidth of 0,01 and call it: ll.fit.highflex.
-
 
 ### Step 3
 ```{r overfitting3, echo=TRUE}
@@ -138,8 +135,7 @@ ggplot(training) + geom_point(mapping = aes(x = x, y = y)) +
   geom_line(mapping = aes(x = x, y = y.ll.highflex), color = "blue")
 ```
 
-We now have 2 models: ll.fit.lowflex and ll.fit.highflex that we plott using the predictions on only the training data. 
-
+We now have 2 models: ll.fit.lowflex and ll.fit.highflex that we plot using the predictions on only the training data. 
 
 ###Step 4 
 We have a blue curve for the high flexibility and a red line for the low flexibility. On the plot, we can clearly see that the prediction of the high flexibility local linear model is more precise and variable than the other one. Indeed, the blue curve follows every exact point of the prediction, however, the red line smooths all the different point to end up to a smooth curve. 
@@ -149,9 +145,7 @@ The red curve seems to fit the true model very well between x = -1 and x = 1 so 
 In general, we can say that the high flexibility prediction have the least bias. 
 
 
-
-
-###Step5
+###Step 5
 ```{r overfitting5, echo=TRUE}
 df <- df %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = df), y.ll.highflex = predict(object = ll.fit.highflex, newdata = df))
 test <- test %>% mutate(y.ll.lowflex = predict(object = ll.fit.lowflex, newdata = test), y.ll.highflex = predict(object = ll.fit.highflex, newdata = test))
@@ -163,7 +157,7 @@ ggplot(test) + geom_point(mapping = aes(x = x, y = y)) +
 ```
 
 Here we deal with the test data instead of the training data. So we have a smaller sample (20% instead of 80%). We can see that the high flexibility model (so the blue curve) is more variable than with the training data. 
-In this prediction we can see that the high flexibility prediction now has a bigger bias and so it's the low flexibility prediction which become more interesting. 
+In this prediction we can see that the high flexibility prediction now has a bigger bias and so it's the low flexibility prediction which become more interesting. It's thus the contrary than before.
 
 ###Step 6
 ```{r overfitting6, echo=TRUE}
@@ -172,9 +166,8 @@ v1 <- seq(0.01, 0.5, by = 0.001)
 We call here  v1 the vector of bandwidth going from 0.01 to 0.5 with a step of 0.001.
 
 ###Step 7
-```{r overfitting7}
+```{r overfitting7, echo=TRUE}
 ll.v1 <- lapply(X = v1, FUN = function(v1) {npreg(y ~ x, data = training, method = "ll", bws = v1)})
-ll.v1
 ```
 We call here  "llv1" the local linear model y ~ x on the training data with each bandwidth that we estimated thanks to the previous step. 
 
@@ -185,10 +178,9 @@ msetrain <- function(fit.model){
   training %>% mutate(squared.error = (y - predictions)^2) %>% summarize(mse = mean(squared.error))
 }
 mse.tr.results <- unlist(lapply(X = ll.v1, FUN = msetrain))
-mse.tr.results
 ```
 We call msetrain the Mean Squared Error (MSE) on the training data (bigger sample) for each bandwidth. 
-We can see that..
+We can see that all the values are between 0.34 and 2.08 approximately. The mean squared error is increasing with the bandwidth on the training data.
 
 ###Step 9
 ```{r overfitting9, echo=TRUE}
@@ -197,10 +189,9 @@ msetest <- function(fit.model){
   test %>% mutate(squared.error = (y - predictions)^2) %>% summarize(mse = mean(squared.error))
 }
 mse.ts.results <- unlist(lapply(X = ll.v1, FUN = msetest))
-mse.ts.results
 ```
 We call msetest the MSE on the test data (smaller sample) for each bandwidth. 
-We can see that. 
+We can see that all the values are between 0.89 and 2.26 approximately. The mean squared error fluctuates like a convex function on the test data (first decreasing and then increasing). So it's differs from the MSE on the training dataset.
 
 ###Step 10
 ```{r overfitting10, echo=TRUE}
@@ -210,13 +201,12 @@ ggplot(mse.final) +
   geom_line(mapping = aes(x = bandwidth, y = msetest), color = "orange")
 ```
 
-We have: 
-blue curve for test data
-orange curve for the training data
+We have:  
+*- The blue curve for test data*  
+*- The orange curve for the training data*  
 We can see that for a high flexibility (curve blue) on the test sample, the more the bandwidth, the more the MSE.
 However for the low flexibility (orange curve) on the training sample, MSE.train decrease for a bandwidth between 0 and 0,25 and increase less strongly for a bandwidth between 0,25 and 0,5. 
 Moreover the 2 MSE curve cross each other for a bandwidth equal to 0,13. 
-
 
 
 ##  Task 3B - Privacy regulation compliance in France
@@ -224,7 +214,8 @@ Moreover the 2 MSE curve cross each other for a bandwidth equal to 0,13.
 ###Step 1
 ```{r overfit32, warning=FALSE}
 library(readxl)
-CNIL.1 <- read_excel("C:/Users/geraldine/rprog/OpenCNIL_Organismes_avec_CIL_VD_20171115.xlsx")
+CNIL.1 <- read_excel("~/OpenCNIL_Organismes_avec_CIL_VD_20171115.xlsx")
 CNIL.1 
 ```
 We imported the dataset from the Open Data Portal in R. 
+
